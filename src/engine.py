@@ -237,9 +237,45 @@ def format_thinking_tags(text: str) -> str:
         else:
             # Thinking block is still generating, render it open
             return f"{before_thinking}<details open class='thinking-block'><summary>Thinking Process...</summary>\n\n{rest.strip()}\n\n</details>"
-    return text
+    
+def extract_artifacts(text: str) -> list:
+    """
+    Extracts all <artifact> blocks (including in-progress ones)
+    from the streaming text.
+    """
+    artifacts = []
+    # Match tags: <artifact title="x" type="y" language="z">content</artifact> or open tags at the end of text
+    pattern = r'<artifact\s+title="([^"]*)"\s+type="([^"]*)"\s+language="([^"]*)"\s*>(.*?)(?:</artifact>|$)'
+    matches = re.finditer(pattern, text, re.DOTALL)
+    for m in matches:
+        title = m.group(1) or "Untitled"
+        type_ = m.group(2) or "code"
+        lang = m.group(3) or "plaintext"
+        content = m.group(4)
+        artifacts.append({
+            "title": title,
+            "type": type_,
+            "language": lang,
+            "content": content.strip()
+        })
+    return artifacts
+
+def clean_chatbot_response(text: str) -> str:
+    """
+    Replaces <artifact> blocks in the response with a clean visual badge
+    so the raw code doesn't clutter the main chat viewport.
+    """
+    pattern = r'<artifact\s+title="([^"]*)"\s+type="([^"]*)"\s+language="([^"]*)"\s*>.*?(?:</artifact>|$)'
+    
+    def replace_with_badge(match):
+        title = match.group(1) or "Untitled Artifact"
+        type_ = match.group(2) or "code"
+        return f"\n\n> ⚙️ **Artifact Generated:** *{title}* ({type_}) — *Rendered in the right-hand panel* ↗️\n\n"
+        
+    return re.sub(pattern, replace_with_badge, text, flags=re.DOTALL)
 
 def execute_chat(
+
     message: str,
     history: list,
     mode: str,
@@ -310,7 +346,7 @@ def execute_chat(
 
     # Prepare active prompt contents
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    compiled_system_prompt = system_prompt_preset.format(datetime=current_time)
+    compiled_system_prompt = system_prompt_preset.replace("{datetime}", current_time)
     
     # Prepend search context to user query if found
     if search_context:
@@ -334,8 +370,11 @@ def execute_chat(
         
         for partial_text in api_stream:
             formatted_text = format_thinking_tags(partial_text)
-            full_response = status_update + formatted_text if status_update else formatted_text
-            yield history + [[message, full_response]], ""
+            artifacts = extract_artifacts(formatted_text)
+            clean_text = clean_chatbot_response(formatted_text)
+            full_response = status_update + clean_text if status_update else clean_text
+            yield history + [[message, full_response]], artifacts
+
             
     else:
         # Local CPU or Zero-GPU mode
@@ -372,5 +411,8 @@ def execute_chat(
         
         for partial_text in local_stream:
             formatted_text = format_thinking_tags(partial_text)
-            full_response = status_update + formatted_text if status_update else formatted_text
-            yield history + [[message, full_response]], ""
+            artifacts = extract_artifacts(formatted_text)
+            clean_text = clean_chatbot_response(formatted_text)
+            full_response = status_update + clean_text if status_update else clean_text
+            yield history + [[message, full_response]], artifacts
+

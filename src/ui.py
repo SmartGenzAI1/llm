@@ -1,6 +1,6 @@
 import gradio as gr
 import torch
-from src.config import MODEL_CONFIGS, SYSTEM_PROMPT, CLAUDE_CSS
+from src.config import MODEL_CONFIGS, SYSTEM_PROMPT, SYSTEM_PROMPTS, CLAUDE_CSS
 from src.engine import execute_chat, HAS_SPACES
 
 def get_hardware_status():
@@ -30,7 +30,6 @@ def execute_chat_ui(
     history,
     mode,
     model_name,
-
     system_prompt_preset,
     max_new_tokens,
     temperature,
@@ -44,7 +43,6 @@ def execute_chat_ui(
     """
     if history is None or len(history) == 0:
         return
-
         
     # Extract latest user message and the history preceding it
     user_message = history[-1][0]
@@ -64,8 +62,56 @@ def execute_chat_ui(
         hf_token=hf_token
     )
     
-    for updated_history, _ in chat_generator:
-        yield updated_history
+    for updated_history, artifacts in chat_generator:
+        yield updated_history, artifacts
+
+def load_selected_artifact(selected_title, artifacts):
+    """Retrieves and formats code/render outputs for a selected artifact."""
+    if not selected_title or not artifacts:
+        return "", "", "plaintext"
+        
+    for art in artifacts:
+        if art["title"] == selected_title:
+            content = art["content"]
+            if art["type"] == "html":
+                # Render HTML inside a secure data URI iframe to isolate it from Gradio styles
+                import urllib.parse
+                escaped_content = urllib.parse.quote(content)
+                iframe_render = f'<iframe src="data:text/html;charset=utf-8,{escaped_content}" style="width: 100%; height: 500px; border: none; border-radius: 8px; background-color: white;"></iframe>'
+                return content, iframe_render, art["language"]
+            elif art["type"] == "svg":
+                # Render SVG directly
+                svg_render = f'<div style="background-color: white; padding: 20px; border-radius: 8px; text-align: center; display: flex; justify-content: center; align-items: center;">{content}</div>'
+                return content, svg_render, "xml"
+            else:
+                # Code content (no render preview available)
+                no_render_placeholder = '<div style="padding: 40px; text-align: center; color: #9ca3af;">No visual render preview available for this code type. Use the "Source Code" tab to view.</div>'
+                return content, no_render_placeholder, art["language"]
+                
+    return "", "", "plaintext"
+
+def update_artifacts_ui(artifacts):
+    """Refreshes the state and visibility of components inside the Artifacts Panel."""
+    if not artifacts:
+        return (
+            gr.Dropdown(choices=[], value=None, visible=False),
+            gr.Markdown(visible=True),
+            gr.Code(value="", visible=False),
+            gr.HTML(value="", visible=False)
+        )
+        
+    choices = [art["title"] for art in artifacts]
+    default_val = choices[-1]
+    
+    code_content, render_html, lang = load_selected_artifact(default_val, artifacts)
+    
+    return (
+        gr.Dropdown(choices=choices, value=default_val, visible=True),
+        gr.Markdown(visible=False),
+        gr.Code(value=code_content, language=lang, visible=True),
+        gr.HTML(value=render_html, visible=True)
+    )
+
 
 def build_interface():
     """Constructs the Gradio user interface using custom styles and themes."""
@@ -85,7 +131,7 @@ def build_interface():
         border_color_primary_dark="rgba(255, 255, 255, 0.08)"
     )
 
-    with gr.Blocks(theme=theme, css=CLAUDE_CSS, title="Antigravity Chat") as demo:
+    with gr.Blocks(theme=theme, css=CLAUDE_CSS, title="Saffan Chat") as demo:
         # State to store the raw message during submission sequence
         
         with gr.Row():
@@ -94,7 +140,7 @@ def build_interface():
                     """
                     <div style="text-align: center; margin-bottom: 24px; margin-top: 10px;">
                         <h1 style="font-size: 2.8em; margin-bottom: 5px; background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                            ANTIGRAVITY CHAT
+                            SAFFAN CHAT
                         </h1>
                         <p style="font-size: 1.1em; color: #9ca3af; max-width: 600px; margin: 0 auto;">
                             A premium Claude-style chatbot environment designed for Hugging Face free tier.
@@ -155,6 +201,13 @@ def build_interface():
                 
                 # Advanced Settings Accordion
                 with gr.Accordion("🛠️ Advanced Parameters", open=False):
+                    system_preset_dropdown = gr.Dropdown(
+                        choices=list(SYSTEM_PROMPTS.keys()),
+                        value="Saffan Chat (Default)",
+                        label="Select AI Persona / Skill Mode",
+                        interactive=True
+                    )
+                    
                     system_prompt = gr.Textbox(
                         label="System Instruction Prompt",
                         value=SYSTEM_PROMPT,
@@ -189,33 +242,84 @@ def build_interface():
                 # System actions
                 clear_btn = gr.Button("🗑️ Clear Chat History", variant="secondary", elem_classes=["secondary-btn"])
             
-            # Main Chat Area
+            # Main Chat & Artifacts Area
             with gr.Column(scale=9):
-                chatbot = gr.Chatbot(
-                    label="Chat Window",
-                    elem_classes=["chatbot-container"],
-                    show_label=False,
-                    avatar_images=(None, "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"),
-                    height=580,
-                    bubble_full_width=False,
-                    type="tuples"
-                )
-
+                # Conversation-scoped state to hold parsed artifacts
+                artifacts_state = gr.State(value=[])
                 
                 with gr.Row():
-                    input_box = gr.Textbox(
-                        placeholder="Ask Antigravity anything... (e.g., 'What happened in AI news this week?' with search on)",
-                        show_label=False,
-                        scale=10
-                    )
-                    submit_btn = gr.Button("Send", variant="primary", scale=1, elem_classes=["action-btn"])
-
-                # Prompts suggestions
-                gr.Markdown("💡 **Quick Prompts**")
-                with gr.Row():
-                    suggestion_1 = gr.Button("Draft a clean Python function using asyncio to scrape web data.", variant="secondary", elem_classes=["secondary-btn"])
-                    suggestion_2 = gr.Button("Search the web for the latest advancements in LLM reasoning models.", variant="secondary", elem_classes=["secondary-btn"])
-                    suggestion_3 = gr.Button("Explain quantum computing superposition using a simple real-life analogy.", variant="secondary", elem_classes=["secondary-btn"])
+                    # Left Column: Chat Viewport
+                    with gr.Column(scale=6):
+                        chatbot = gr.Chatbot(
+                            label="Chat Window",
+                            elem_classes=["chatbot-container"],
+                            show_label=False,
+                            avatar_images=(None, "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"),
+                            height=580,
+                            bubble_full_width=False,
+                            type="tuples"
+                        )
+                        
+                        with gr.Row():
+                            input_box = gr.Textbox(
+                                placeholder="Ask Saffan anything... (e.g., 'Draft a clean Python function using asyncio to scrape web data.')",
+                                show_label=False,
+                                scale=10
+                            )
+                            submit_btn = gr.Button("Send", variant="primary", scale=1, elem_classes=["action-btn"])
+                            
+                        # Prompts suggestions
+                        gr.Markdown("💡 **Quick Prompts**")
+                        with gr.Row():
+                            suggestion_1 = gr.Button("Draft a clean Python function using asyncio to scrape web data.", variant="secondary", elem_classes=["secondary-btn"])
+                            suggestion_2 = gr.Button("Search the web for the latest advancements in LLM reasoning models.", variant="secondary", elem_classes=["secondary-btn"])
+                            suggestion_3 = gr.Button("Explain quantum computing superposition using a simple real-life analogy.", variant="secondary", elem_classes=["secondary-btn"])
+                            
+                    # Right Column: Claude-Style Artifacts Panel
+                    with gr.Column(scale=5, elem_classes=["sidebar-panel"]):
+                        gr.HTML(
+                            """
+                            <div style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 15px;">
+                                <h3 style="margin: 0; font-size: 1.25em; color: #60a5fa; display: flex; align-items: center; gap: 8px;">
+                                    🎨 Claude-Style Artifacts
+                                </h3>
+                                <p style="margin: 3px 0 0 0; font-size: 0.8em; color: #9ca3af;">
+                                    Interactive HTML/SVG rendering and source code viewer.
+                                </p>
+                            </div>
+                            """
+                        )
+                        
+                        # Artifact Selector Dropdown
+                        artifact_selector = gr.Dropdown(
+                            label="Select Artifact",
+                            choices=[],
+                            value=None,
+                            visible=False,
+                            interactive=True
+                        )
+                        
+                        # No Artifacts Placeholder Description
+                        artifact_placeholder = gr.Markdown(
+                            "**No active artifacts.**\n\nWhen Saffan generates complete webpages, SVG graphics, or scripts, they will appear here side-by-side automatically.",
+                            visible=True
+                        )
+                        
+                        # Tabs for Preview Render and Code Source
+                        with gr.Tabs() as artifact_tabs:
+                            with gr.Tab("Preview"):
+                                artifact_render = gr.HTML(
+                                    value="",
+                                    visible=False
+                                )
+                            with gr.Tab("Source Code"):
+                                artifact_code = gr.Code(
+                                    value="",
+                                    language="plaintext",
+                                    interactive=False,
+                                    wrap_lines=True,
+                                    visible=False
+                                )
 
         # Define UI event linkages
         
@@ -224,6 +328,13 @@ def build_interface():
             fn=update_model_dropdown,
             inputs=[mode_dropdown],
             outputs=[model_dropdown]
+        )
+        
+        # Preset dropdown change updates the system prompt textbox content
+        system_preset_dropdown.change(
+            fn=lambda preset: SYSTEM_PROMPTS.get(preset, SYSTEM_PROMPT),
+            inputs=[system_preset_dropdown],
+            outputs=[system_prompt]
         )
         
         # 2. Main submit event chain (for Enter key submit)
@@ -245,7 +356,7 @@ def build_interface():
                 enable_search,
                 hf_token
             ],
-            outputs=[chatbot]
+            outputs=[chatbot, artifacts_state]
         )
         
         # 3. Submit button click event chain
@@ -267,19 +378,39 @@ def build_interface():
                 enable_search,
                 hf_token
             ],
-            outputs=[chatbot]
+            outputs=[chatbot, artifacts_state]
         )
         
-        # 4. Clear chat history button event
-        clear_btn.click(fn=lambda: [], outputs=chatbot, queue=False)
-
+        # 4. State change triggers UI update for the Artifacts panel
+        artifacts_state.change(
+            fn=update_artifacts_ui,
+            inputs=[artifacts_state],
+            outputs=[artifact_selector, artifact_placeholder, artifact_code, artifact_render]
+        )
         
-        # 5. Suggestion prompt buttons click events
+        # 5. Dropdown change updates the content panel
+        def handle_selector_change(selected_title, artifacts):
+            if not selected_title or not artifacts:
+                return gr.update(value="", visible=False), gr.update(value="", visible=False)
+            code_content, render_html, lang = load_selected_artifact(selected_title, artifacts)
+            return (
+                gr.Code(value=code_content, language=lang, visible=True),
+                gr.HTML(value=render_html, visible=True)
+            )
+
+        artifact_selector.change(
+            fn=handle_selector_change,
+            inputs=[artifact_selector, artifacts_state],
+            outputs=[artifact_code, artifact_render]
+        )
+        
+        # 6. Clear chat history button event (also clears artifacts state)
+        clear_btn.click(fn=lambda: ([], []), outputs=[chatbot, artifacts_state], queue=False)
+        
+        # 7. Suggestion prompt buttons click events
         def load_suggestion(text):
             search_enabled = "Search the web" in text or "latest advancements" in text
             return text, search_enabled
-
-
 
         suggestion_1.click(
             fn=lambda: load_suggestion("Draft a clean Python function using asyncio to scrape web data."),
