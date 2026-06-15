@@ -29,6 +29,7 @@ jobs:
           fi
           
           # Force push to HF space using the universal x-token-auth username
-          git remote add hf https://huggingface.co/spaces/SmartGenzAI1/llm || true
-          git push --force https://x-token-auth:$HF_TOKEN@huggingface.co/spaces/SmartGenzAI1/llm main
+          git remote add hf https://huggingface.co/spaces/Saffan/llm || true
+          git push --force https://x-token-auth:$HF_TOKEN@huggingface.co/spaces/Saffan/llm main
+
 
