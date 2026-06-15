@@ -193,8 +193,10 @@ def build_interface():
                     show_label=False,
                     avatar_images=(None, "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"),
                     height=580,
-                    bubble_full_width=False
+                    bubble_full_width=False,
+                    type="tuples"
                 )
+
                 
                 with gr.Row():
                     input_box = gr.Textbox(
@@ -265,7 +267,8 @@ def build_interface():
         )
         
         # 4. Clear chat history button event
-        clear_btn.click(fn=lambda: None, outputs=chatbot, queue=False)
+        clear_btn.click(fn=lambda: [], outputs=chatbot, queue=False)
+
         
         # 5. Suggestion prompt buttons click events
         def load_suggestion(text):
