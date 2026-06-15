@@ -2,13 +2,14 @@
 title: Claude-Style Modular LLM Space
 emoji: 🤖
 colorFrom: indigo
-colorTo: slate
+colorTo: blue
 sdk: gradio
 sdk_version: 4.44.0
 app_file: app.py
 pinned: false
 license: mit
-short_description: A premium Claude-style chatbot with web search, scraping, and memory.
+short_description: Claude-style chatbot with search and memory.
+
 ---
 
 # Claude-Style Modular LLM Chatbot
