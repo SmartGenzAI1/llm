@@ -79,50 +79,87 @@ def get_local_model(repo_id: str):
     print(f"Successfully loaded {repo_id} into memory.")
     return model, tokenizer
 
-# Zero-GPU wraps the execution. We use the gpu_decorator.
-@gpu_decorator
-def generate_local_inference(prompt_text: str, repo_id: str, max_new_tokens: int, temperature: float, top_p: float):
+def sample_next_token(logits, temperature: float, top_p: float):
+    """Samples the next token from logits using temperature and top-p (nucleus) filtering."""
+    # Apply temperature
+    if temperature > 0.0 and temperature != 1.0:
+        logits = logits / temperature
+        
+    # Apply top-p (nucleus) filtering
+    if 0.0 < top_p < 1.0:
+        sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+        cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
+        
+        # Remove tokens with cumulative probability above the threshold
+        sorted_indices_to_remove = cumulative_probs > top_p
+        # Keep at least the first token (prevent empty sets)
+        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+        sorted_indices_to_remove[..., 0] = 0
+        
+        sorted_logits[sorted_indices_to_remove] = -float("Inf")
+        logits = torch.gather(sorted_logits, -1, sorted_indices.argsort(-1))
+        
+    # Sample or Argmax
+    if temperature > 0.0:
+        probs = torch.softmax(logits, dim=-1)
+        next_token = torch.multinomial(probs, num_samples=1)
+    else:
+        next_token = torch.argmax(logits, dim=-1, keepdim=True)
+        
+    return next_token
+
+def generate_local_inference_cpu(prompt_text: str, repo_id: str, max_new_tokens: int, temperature: float, top_p: float):
     """
-    Executes local text generation with streaming capabilities.
-    Works seamlessly on both CPU and Zero-GPU spaces.
+    Executes local text generation using a pure-python KV-cache loop.
+    This avoids background threads entirely, making it 100% compatible
+    with both standard CPU spaces and Hugging Face Zero-GPU environments.
     """
     model, tokenizer = get_local_model(repo_id)
-    
-    # Check device
     device = next(model.parameters()).device
     
-    # Tokenize input
-    inputs = tokenizer(prompt_text, return_tensors="pt").to(device)
+    # Tokenize prompt
+    input_ids = tokenizer(prompt_text, return_tensors="pt").input_ids.to(device)
     
-    # Set up streaming iterator
-    streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, clean_up_tokenization_spaces=True)
+    # Check stopping criteria (all special tokens like <|endoftext|>, <|im_end|>, etc.)
+    stop_tokens = tokenizer.all_special_ids
     
-    # Prepare generation parameters
-    # Adjust temperature constraints (transformers expects temp > 0 if do_sample is True)
-    do_sample = temperature > 0.0
-    gen_kwargs = {
-        "input_ids": inputs["input_ids"],
-        "attention_mask": inputs.get("attention_mask"),
-        "max_new_tokens": max_new_tokens,
-        "temperature": temperature if do_sample else None,
-        "top_p": top_p if do_sample else None,
-        "do_sample": do_sample,
-        "streamer": streamer,
-        "pad_token_id": tokenizer.eos_token_id
-    }
+    past_key_values = None
+    generated_ids = []
     
-    # Run in a background thread to allow streaming
-    from threading import Thread
-    thread = Thread(target=model.generate, kwargs=gen_kwargs)
-    thread.start()
-    
-    # Yield tokens as they arrive
-    generated_text = ""
-    for new_text in streamer:
-        generated_text += new_text
-        yield generated_text
+    # Disable gradient computation for efficiency
+    with torch.no_grad():
+        # First step (process the whole prompt)
+        outputs = model(input_ids, use_cache=True)
+        next_token_logits = outputs.logits[:, -1, :]
+        past_key_values = outputs.past_key_values
         
-    thread.join()
+        next_token = sample_next_token(next_token_logits, temperature, top_p)
+        next_token_id = next_token.item()
+        
+        if next_token_id in stop_tokens:
+            return
+            
+        generated_ids.append(next_token_id)
+        yield tokenizer.decode(generated_ids, skip_special_tokens=True)
+        
+        # Loop steps (generate one token at a time passing KV cache)
+        for _ in range(max_new_tokens - 1):
+            outputs = model(next_token, past_key_values=past_key_values, use_cache=True)
+            next_token_logits = outputs.logits[:, -1, :]
+            past_key_values = outputs.past_key_values
+            
+            next_token = sample_next_token(next_token_logits, temperature, top_p)
+            next_token_id = next_token.item()
+            
+            if next_token_id in stop_tokens:
+                break
+                
+            generated_ids.append(next_token_id)
+            yield tokenizer.decode(generated_ids, skip_special_tokens=True)
+
+# GPU-accelerated version wrapped with Hugging Face Zero-GPU decorator
+generate_local_inference_gpu = gpu_decorator(generate_local_inference_cpu)
+
 
 def run_serverless_api_inference(messages: list, repo_id: str, max_new_tokens: int, temperature: float, top_p: float, hf_token: str = None):
     """
@@ -314,13 +351,24 @@ def execute_chat(
         # Free up variables
         del tokenizer
         
-        local_stream = generate_local_inference(
-            prompt_text=prompt_text,
-            repo_id=repo_id,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            top_p=top_p
-        )
+        # Conditionally invoke GPU or CPU engine based on selected UI mode
+        if mode == "Zero-GPU (Accelerated)":
+            local_stream = generate_local_inference_gpu(
+                prompt_text=prompt_text,
+                repo_id=repo_id,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                top_p=top_p
+            )
+        else:
+            local_stream = generate_local_inference_cpu(
+                prompt_text=prompt_text,
+                repo_id=repo_id,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                top_p=top_p
+            )
+
         
         for partial_text in local_stream:
             formatted_text = format_thinking_tags(partial_text)
