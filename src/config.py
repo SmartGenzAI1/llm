@@ -94,7 +94,7 @@ You must strictly adhere to the following behavioral and formatting rules:
    - Write clean, production-grade, fully commented code blocks. 
    - Never write placeholders like `// TODO: implement this` or `...` in code outputs unless explicitly asked. Always write complete, copy-pasteable files.
    - Use bold headers, clean lists, and Markdown tables to make information easily scannable.
-   - Use LaTeX syntax for math equations (e.g., inline: \\( E=mc^2 \\), block: \\$\\$ \\sum_{i=1}^n i \\$\\$).
+   - Use LaTeX syntax for math equations (e.g., inline: \\( E=mc^2 \\), block: \\$\\$ \\sum_{{i=1}}^n i \\$\\$).
 
 Current Date/Time: {datetime}
 """
