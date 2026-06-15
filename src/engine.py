@@ -239,6 +239,12 @@ def format_thinking_tags(text: str) -> str:
     Replaces model <thinking></thinking> tags with clean, modern HTML Details panels
     for premium rendering in the Gradio chat viewport.
     """
+    if not isinstance(text, str):
+        if isinstance(text, (list, tuple)):
+            text = " ".join(str(x) for x in text)
+        else:
+            text = str(text) if text is not None else ""
+            
     if "<thinking>" in text:
         parts = text.split("<thinking>", 1)
         before_thinking = parts[0]
@@ -252,12 +258,19 @@ def format_thinking_tags(text: str) -> str:
         else:
             # Thinking block is still generating, render it open
             return f"{before_thinking}<details open class='thinking-block'><summary>Thinking Process...</summary>\n\n{rest.strip()}\n\n</details>"
+    return text
     
 def extract_artifacts(text: str) -> list:
     """
     Extracts all <artifact> blocks (including in-progress ones)
     from the streaming text.
     """
+    if not isinstance(text, str):
+        if isinstance(text, (list, tuple)):
+            text = " ".join(str(x) for x in text)
+        else:
+            text = str(text) if text is not None else ""
+            
     artifacts = []
     # Match tags: <artifact title="x" type="y" language="z">content</artifact> or open tags at the end of text
     pattern = r'<artifact\s+title="([^"]*)"\s+type="([^"]*)"\s+language="([^"]*)"\s*>(.*?)(?:</artifact>|$)'
@@ -280,6 +293,12 @@ def clean_chatbot_response(text: str) -> str:
     Replaces <artifact> blocks in the response with a clean visual badge
     so the raw code doesn't clutter the main chat viewport.
     """
+    if not isinstance(text, str):
+        if isinstance(text, (list, tuple)):
+            text = " ".join(str(x) for x in text)
+        else:
+            text = str(text) if text is not None else ""
+            
     pattern = r'<artifact\s+title="([^"]*)"\s+type="([^"]*)"\s+language="([^"]*)"\s*>.*?(?:</artifact>|$)'
     
     def replace_with_badge(match):
