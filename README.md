@@ -30,19 +30,29 @@ It features a minimalist **Claude-style interface** (built with custom CSS and G
 
 ## 🛠️ Hugging Face Space Deployment
 
-Hugging Face restricts the `template` query parameter to a whitelist of official templates. To host your own copy, you have two simple methods:
+Click the button below to start your deployment:
 
-### Method 1: Git Push (Recommended)
-1. Create a new blank Space on [Hugging Face](https://huggingface.co/new-space).
-2. Set the SDK to **Gradio**.
-3. Push these files directly to your Space's repository:
+[![Deploy to Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/deploy-to-spaces-lg.svg)](https://huggingface.co/new-space?sdk=gradio)
+
+### How to Deploy in 3 Simple Steps:
+1.  **Create the Space**: Click the button above, type **`llm`** as the Space Name, and click **Create Space** at the bottom of the Hugging Face page.
+2.  **Add your HF_TOKEN Secret**: Go to your GitHub repository -> **Settings** -> **Secrets and variables** -> **Actions** -> Add a secret named `HF_TOKEN` containing your Hugging Face write-access token (from [hf.co/settings/tokens](https://huggingface.co/settings/tokens)).
+3.  **Run GitHub Sync Action**: Go to the **Actions** tab in your GitHub repository, select **Sync to Hugging Face Spaces**, and click **Run workflow**.
+
+---
+
+### Method 1: Manual Git Push
+If you prefer to deploy manually via terminal:
+1. Create a new blank Space on [Hugging Face](https://huggingface.co/new-space) (SDK: Gradio).
+2. Push these files directly to your Space's repository:
    ```bash
    git remote add hf https://huggingface.co/spaces/YOUR_HF_USERNAME/YOUR_SPACE_NAME
    git push -u hf main --force
    ```
 
 ### Method 2: GitHub Action Auto-Sync (Fully Automated)
-You can set up a GitHub Action to automatically sync your GitHub pushes directly to Hugging Face Spaces:
+Your repository is pre-configured with a GitHub Action that automatically syncs code to Hugging Face on every commit:
+
 1. Create your Space on Hugging Face (SDK: Gradio).
 2. Go to your GitHub repository -> **Settings** -> **Secrets and variables** -> **Actions**.
 3. Create a **New repository secret**:
