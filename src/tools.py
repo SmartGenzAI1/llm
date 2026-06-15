@@ -3,6 +3,11 @@ import urllib.parse
 import requests
 from bs4 import BeautifulSoup
 import html2text
+
+import warnings
+# Suppress duckduckgo_search rename warning
+warnings.filterwarnings("ignore", message=".*duckduckgo_search.*")
+
 from duckduckgo_search import DDGS
 
 # Standard browser headers to avoid getting blocked by websites
