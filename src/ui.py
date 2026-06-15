@@ -68,17 +68,20 @@ def execute_chat_ui(
 def load_selected_artifact(selected_title, artifacts):
     """Retrieves and formats code/render outputs for a selected artifact."""
     if not selected_title or not artifacts:
-        return "", "", "plaintext"
+        return "", "", None
         
     for art in artifacts:
         if art["title"] == selected_title:
             content = art["content"]
+            lang = art.get("language")
+            if lang == "plaintext":
+                lang = None
             if art["type"] == "html":
                 # Render HTML inside a secure data URI iframe to isolate it from Gradio styles
                 import urllib.parse
                 escaped_content = urllib.parse.quote(content)
                 iframe_render = f'<iframe src="data:text/html;charset=utf-8,{escaped_content}" style="width: 100%; height: 500px; border: none; border-radius: 8px; background-color: white;"></iframe>'
-                return content, iframe_render, art["language"]
+                return content, iframe_render, lang
             elif art["type"] == "svg":
                 # Render SVG directly
                 svg_render = f'<div style="background-color: white; padding: 20px; border-radius: 8px; text-align: center; display: flex; justify-content: center; align-items: center;">{content}</div>'
@@ -86,9 +89,9 @@ def load_selected_artifact(selected_title, artifacts):
             else:
                 # Code content (no render preview available)
                 no_render_placeholder = '<div style="padding: 40px; text-align: center; color: #9ca3af;">No visual render preview available for this code type. Use the "Source Code" tab to view.</div>'
-                return content, no_render_placeholder, art["language"]
+                return content, no_render_placeholder, lang
                 
-    return "", "", "plaintext"
+    return "", "", None
 
 def update_artifacts_ui(artifacts):
     """Refreshes the state and visibility of components inside the Artifacts Panel."""
@@ -315,7 +318,7 @@ def build_interface():
                             with gr.Tab("Source Code"):
                                 artifact_code = gr.Code(
                                     value="",
-                                    language="plaintext",
+                                    language=None,
                                     interactive=False,
                                     wrap_lines=True,
                                     visible=False
