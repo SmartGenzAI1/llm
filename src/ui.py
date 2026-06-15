@@ -20,14 +20,17 @@ def update_model_dropdown(mode):
 
 def add_user_message(message, history):
     """Adds the user message to the chat container and clears the input box."""
-    if not message.strip():
+    if not message or not message.strip():
         return "", history
+    if history is None:
+        history = []
     return "", history + [[message, "⏳ Initializing inference engine..."]]
 
 def execute_chat_ui(
     history,
     mode,
     model_name,
+
     system_prompt_preset,
     max_new_tokens,
     temperature,
@@ -39,8 +42,9 @@ def execute_chat_ui(
     UI Wrapper that processes the active chatbot history state,
     runs the backend generator, and streams response updates.
     """
-    if not history:
+    if history is None or len(history) == 0:
         return
+
         
     # Extract latest user message and the history preceding it
     user_message = history[-1][0]
@@ -272,9 +276,10 @@ def build_interface():
         
         # 5. Suggestion prompt buttons click events
         def load_suggestion(text):
-            # When clicked, populate textbox, enable web search if query implies it
             search_enabled = "Search the web" in text or "latest advancements" in text
-            return text, gr.update(value=search_enabled)
+            return text, search_enabled
+
+
 
         suggestion_1.click(
             fn=lambda: load_suggestion("Draft a clean Python function using asyncio to scrape web data."),
