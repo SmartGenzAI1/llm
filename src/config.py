@@ -18,7 +18,13 @@ MODEL_CONFIGS = {
         {
             "name": "Llama 3.2 3B Instruct",
             "repo_id": "meta-llama/Llama-3.2-3B-Instruct",
-            "description": "Very smart, well-balanced for CPU. Might take a bit longer to load.",
+            "description": "Very smart, well-balanced for CPU. Gated model.",
+            "default": False
+        },
+        {
+            "name": "Gemma 2 2B Instruct",
+            "repo_id": "google/gemma-2-2b-it",
+            "description": "Google's ultra-powerful lightweight model. Gated model.",
             "default": False
         }
     ],
@@ -32,7 +38,13 @@ MODEL_CONFIGS = {
         {
             "name": "Llama 3 8B Instruct",
             "repo_id": "meta-llama/Meta-Llama-3-8B-Instruct",
-            "description": "Meta's standard 8B model. Balanced and conversational.",
+            "description": "Meta's standard 8B model. Gated model.",
+            "default": False
+        },
+        {
+            "name": "Gemma 2 9B Instruct",
+            "repo_id": "google/gemma-2-9b-it",
+            "description": "Google's 9B instruction-tuned model. Gated model.",
             "default": False
         },
         {
@@ -44,16 +56,22 @@ MODEL_CONFIGS = {
     ],
     "HF Serverless API (Zero Overhead)": [
         {
-            "name": "Llama 3.3 70B Instruct",
-            "repo_id": "meta-llama/Llama-3.3-70B-Instruct",
-            "description": "Massive 70B model. State-of-the-art reasoning, fully hosted by Hugging Face.",
-            "default": False
-        },
-        {
             "name": "Qwen 2.5 72B Instruct",
             "repo_id": "Qwen/Qwen2.5-72B-Instruct",
             "description": "Extremely powerful, rivals commercial LLMs. Hosted by Hugging Face.",
             "default": True
+        },
+        {
+            "name": "Gemma 2 27B Instruct",
+            "repo_id": "google/gemma-2-27b-it",
+            "description": "Massive 27B model by Google. Gated model.",
+            "default": False
+        },
+        {
+            "name": "Llama 3.3 70B Instruct",
+            "repo_id": "meta-llama/Llama-3.3-70B-Instruct",
+            "description": "Massive 70B model. Gated model.",
+            "default": False
         },
         {
             "name": "Mixtral 8x7B Instruct",
