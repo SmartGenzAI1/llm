@@ -20,8 +20,15 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Configure remote and force push to HF space
-          # Defaulting Space name to SmartGenzAI1/llm to match Github repo name.
-          # If your Hugging Face Space has a different username/slug, update it below.
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::HF_TOKEN secret is missing! Please configure your Hugging Face Write Token in GitHub Secrets."
+            echo "Go to: GitHub Repository -> Settings -> Secrets and variables -> Actions -> 'New repository secret'"
+            echo "Name: HF_TOKEN"
+            echo "Value: Your Hugging Face Access Token (Get one at https://huggingface.co/settings/tokens)"
+            exit 1
+          fi
+          
+          # Force push to HF space using the universal x-token-auth username
           git remote add hf https://huggingface.co/spaces/SmartGenzAI1/llm || true
-          git push --force https://SmartGenzAI1:$HF_TOKEN@huggingface.co/spaces/SmartGenzAI1/llm main
+          git push --force https://x-token-auth:$HF_TOKEN@huggingface.co/spaces/SmartGenzAI1/llm main
+
