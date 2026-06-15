@@ -6,13 +6,31 @@ MODEL_CONFIGS = {
         {
             "name": "Qwen 2.5 1.5B Instruct",
             "repo_id": "Qwen/Qwen2.5-1.5B-Instruct",
-            "description": "Blazing fast on CPU, highly competent. Ideal for basic CPU spaces.",
+            "description": "Blazing fast on CPU, highly competent. Open model (No token needed).",
             "default": True
+        },
+        {
+            "name": "DeepSeek R1 Distill Qwen 1.5B",
+            "repo_id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+            "description": "State-of-the-art reasoning model on CPU. Open model (No token needed).",
+            "default": False
+        },
+        {
+            "name": "Qwen 2.5 Coder 1.5B Instruct",
+            "repo_id": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+            "description": "Expert lightweight coding model. Open model (No token needed).",
+            "default": False
+        },
+        {
+            "name": "Phi-3.5 Mini Instruct",
+            "repo_id": "microsoft/Phi-3.5-mini-instruct",
+            "description": "Microsoft's 3.8B model with excellent reasoning. Open model (No token needed).",
+            "default": False
         },
         {
             "name": "Llama 3.2 1B Instruct",
             "repo_id": "meta-llama/Llama-3.2-1B-Instruct",
-            "description": "Ultra-lightweight model by Meta. Low RAM footprint.",
+            "description": "Ultra-lightweight model by Meta. Gated model.",
             "default": False
         },
         {
@@ -32,8 +50,26 @@ MODEL_CONFIGS = {
         {
             "name": "Qwen 2.5 7B Instruct",
             "repo_id": "Qwen/Qwen2.5-7B-Instruct",
-            "description": "Excellent reasoning and coding. Highly recommended for Zero-GPU.",
+            "description": "Excellent reasoning and coding. Highly recommended for Zero-GPU. Open model (No token needed).",
             "default": True
+        },
+        {
+            "name": "DeepSeek R1 Distill Qwen 8B",
+            "repo_id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-8B",
+            "description": "Powerful 8B reasoning and thinking model. Open model (No token needed).",
+            "default": False
+        },
+        {
+            "name": "Qwen 2.5 Coder 7B Instruct",
+            "repo_id": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "description": "Top-tier coder model for Zero-GPU. Open model (No token needed).",
+            "default": False
+        },
+        {
+            "name": "Mistral 7B Instruct v0.3",
+            "repo_id": "mistralai/Mistral-7B-Instruct-v0.3",
+            "description": "Classic developer favorite. Open model (No token needed).",
+            "default": False
         },
         {
             "name": "Llama 3 8B Instruct",
@@ -46,20 +82,32 @@ MODEL_CONFIGS = {
             "repo_id": "google/gemma-2-9b-it",
             "description": "Google's 9B instruction-tuned model. Gated model.",
             "default": False
-        },
-        {
-            "name": "Mistral 7B Instruct v0.3",
-            "repo_id": "mistralai/Mistral-7B-Instruct-v0.3",
-            "description": "Classic developer favorite. Excellent instruction following.",
-            "default": False
         }
     ],
     "HF Serverless API (Zero Overhead)": [
         {
             "name": "Qwen 2.5 72B Instruct",
             "repo_id": "Qwen/Qwen2.5-72B-Instruct",
-            "description": "Extremely powerful, rivals commercial LLMs. Hosted by Hugging Face.",
+            "description": "Extremely powerful, rivals commercial LLMs. Open model (No token needed).",
             "default": True
+        },
+        {
+            "name": "DeepSeek R1 Distill Qwen 32B",
+            "repo_id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+            "description": "Distilled 32B reasoning model. Open model (No token needed).",
+            "default": False
+        },
+        {
+            "name": "Qwen 2.5 Coder 72B Instruct",
+            "repo_id": "Qwen/Qwen2.5-Coder-72B-Instruct",
+            "description": "State-of-the-art open coding model. Open model (No token needed).",
+            "default": False
+        },
+        {
+            "name": "Mixtral 8x7B Instruct",
+            "repo_id": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+            "description": "High-speed Mixture of Experts. Open model (No token needed).",
+            "default": False
         },
         {
             "name": "Gemma 2 27B Instruct",
@@ -71,12 +119,6 @@ MODEL_CONFIGS = {
             "name": "Llama 3.3 70B Instruct",
             "repo_id": "meta-llama/Llama-3.3-70B-Instruct",
             "description": "Massive 70B model. Gated model.",
-            "default": False
-        },
-        {
-            "name": "Mixtral 8x7B Instruct",
-            "repo_id": "mistralai/Mixtral-8x7B-Instruct-v0.1",
-            "description": "High-speed Mixture of Experts model. Hosted by Hugging Face.",
             "default": False
         }
     ]
