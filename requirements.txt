@@ -12,3 +12,5 @@ duckduckgo_search>=6.2.0
 beautifulsoup4>=4.12.0
 html2text>=2024.2.26
 requests
+pydantic==2.8.2
+
