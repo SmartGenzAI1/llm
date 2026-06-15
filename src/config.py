@@ -47,13 +47,13 @@ MODEL_CONFIGS = {
             "name": "Llama 3.3 70B Instruct",
             "repo_id": "meta-llama/Llama-3.3-70B-Instruct",
             "description": "Massive 70B model. State-of-the-art reasoning, fully hosted by Hugging Face.",
-            "default": True
+            "default": False
         },
         {
             "name": "Qwen 2.5 72B Instruct",
             "repo_id": "Qwen/Qwen2.5-72B-Instruct",
             "description": "Extremely powerful, rivals commercial LLMs. Hosted by Hugging Face.",
-            "default": False
+            "default": True
         },
         {
             "name": "Mixtral 8x7B Instruct",
