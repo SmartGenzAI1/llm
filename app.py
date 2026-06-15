@@ -13,9 +13,9 @@ if __name__ == "__main__":
     launch_kwargs = {
         "server_name": "0.0.0.0",
         "server_port": 7860,
-        "show_api": False,
-        "concurrency_limit": 10
+        "show_api": False
     }
+
     
     # Enable login window if password secret is configured
     if password:
