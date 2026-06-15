@@ -40,7 +40,7 @@ def unload_model():
             torch.cuda.empty_cache()
         time.sleep(1)
 
-def get_local_model(repo_id: str):
+def get_local_model(repo_id: str, hf_token: str = None):
     """
     Retrieves the local tokenizer and model, loading them from Hugging Face
     cache if not already loaded in the memory cache.
@@ -54,7 +54,7 @@ def get_local_model(repo_id: str):
     unload_model()
 
     print(f"Loading model: {repo_id}...")
-    tokenizer = AutoTokenizer.from_pretrained(repo_id)
+    token = hf_token or os.environ.get("HF_TOKEN")
     
     # Determine the device mapping (GPU if available, else CPU)
     if torch.cuda.is_available():
@@ -65,12 +65,26 @@ def get_local_model(repo_id: str):
         # On CPU, float32 is most stable, bfloat16 can be used if CPU supports it
         torch_dtype = torch.float32
 
-    model = AutoModelForCausalLM.from_pretrained(
-        repo_id,
-        device_map=device_map,
-        torch_dtype=torch_dtype,
-        low_cpu_mem_usage=True
-    )
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(repo_id, token=token)
+        model = AutoModelForCausalLM.from_pretrained(
+            repo_id,
+            device_map=device_map,
+            torch_dtype=torch_dtype,
+            low_cpu_mem_usage=True,
+            token=token
+        )
+    except Exception as e:
+        error_msg = str(e)
+        if "gated repo" in error_msg.lower() or "401" in error_msg or "unauthorized" in error_msg.lower() or "gatedrepoerror" in error_msg.lower():
+            raise ValueError(
+                f"❌ Hugging Face Access Error: The model you selected (`{repo_id}`) is a Gated Model.\n\n"
+                f"To access this model, please:\n"
+                f"1. Accept the licensing agreement on the model page: [huggingface.co/{repo_id}](https://huggingface.co/{repo_id})\n"
+                f"2. Provide your Hugging Face API Read Token in the *Advanced Parameters* input in the sidebar, or set it as a Space Secret named `HF_TOKEN` in your Hugging Face Space settings."
+            )
+        else:
+            raise ValueError(f"❌ Failed to load model `{repo_id}`: {e}")
 
     _current_model = model
     _current_tokenizer = tokenizer
@@ -108,13 +122,13 @@ def sample_next_token(logits, temperature: float, top_p: float):
         
     return next_token
 
-def generate_local_inference_cpu(prompt_text: str, repo_id: str, max_new_tokens: int, temperature: float, top_p: float):
+def generate_local_inference_cpu(prompt_text: str, repo_id: str, max_new_tokens: int, temperature: float, top_p: float, hf_token: str = None):
     """
     Executes local text generation using a pure-python KV-cache loop.
     This avoids background threads entirely, making it 100% compatible
     with both standard CPU spaces and Hugging Face Zero-GPU environments.
     """
-    model, tokenizer = get_local_model(repo_id)
+    model, tokenizer = get_local_model(repo_id, hf_token)
     device = next(model.parameters()).device
     
     # Tokenize prompt
@@ -380,8 +394,9 @@ def execute_chat(
         # Local CPU or Zero-GPU mode
         # Load local tokenizer (temporarily to build prompt or load model)
         # Note: loading tokenizer is fast and lightweight
+        token = hf_token or os.environ.get("HF_TOKEN")
         try:
-            tokenizer = AutoTokenizer.from_pretrained(repo_id)
+            tokenizer = AutoTokenizer.from_pretrained(repo_id, token=token)
         except Exception:
             tokenizer = None
             
@@ -397,7 +412,8 @@ def execute_chat(
                 repo_id=repo_id,
                 max_new_tokens=max_new_tokens,
                 temperature=temperature,
-                top_p=top_p
+                top_p=top_p,
+                hf_token=token
             )
         else:
             local_stream = generate_local_inference_cpu(
@@ -405,14 +421,18 @@ def execute_chat(
                 repo_id=repo_id,
                 max_new_tokens=max_new_tokens,
                 temperature=temperature,
-                top_p=top_p
+                top_p=top_p,
+                hf_token=token
             )
 
-        
-        for partial_text in local_stream:
-            formatted_text = format_thinking_tags(partial_text)
-            artifacts = extract_artifacts(formatted_text)
-            clean_text = clean_chatbot_response(formatted_text)
-            full_response = status_update + clean_text if status_update else clean_text
-            yield history + [[message, full_response]], artifacts
+        try:
+            for partial_text in local_stream:
+                formatted_text = format_thinking_tags(partial_text)
+                artifacts = extract_artifacts(formatted_text)
+                clean_text = clean_chatbot_response(formatted_text)
+                full_response = status_update + clean_text if status_update else clean_text
+                yield history + [[message, full_response]], artifacts
+        except Exception as e:
+            error_message = f"\n\n### ⚠️ Inference Failure\n{e}"
+            yield history + [[message, status_update + error_message if status_update else error_message]], []
 
