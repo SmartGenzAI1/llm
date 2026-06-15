@@ -28,11 +28,27 @@ It features a minimalist **Claude-style interface** (built with custom CSS and G
 * **Conversational Memory**: Maintains session chat history dynamically.
 * **State-of-the-Art System Prompt**: Tailored prompts that guide the model to provide detailed, step-by-step thinking, well-formatted markdown, and objective answers.
 
-## 🛠️ Hugging Face One-Click Deployment
+## 🛠️ Hugging Face Space Deployment
 
-Click the button below to deploy this template directly to your Hugging Face Spaces:
+Hugging Face restricts the `template` query parameter to a whitelist of official templates. To host your own copy, you have two simple methods:
 
-[![Deploy to Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/deploy-to-spaces-lg.svg)](https://huggingface.co/new-space?template=SmartGenzAI1/llm)
+### Method 1: Git Push (Recommended)
+1. Create a new blank Space on [Hugging Face](https://huggingface.co/new-space).
+2. Set the SDK to **Gradio**.
+3. Push these files directly to your Space's repository:
+   ```bash
+   git remote add hf https://huggingface.co/spaces/YOUR_HF_USERNAME/YOUR_SPACE_NAME
+   git push -u hf main --force
+   ```
+
+### Method 2: GitHub Action Auto-Sync (Fully Automated)
+You can set up a GitHub Action to automatically sync your GitHub pushes directly to Hugging Face Spaces:
+1. Create your Space on Hugging Face (SDK: Gradio).
+2. Go to your GitHub repository -> **Settings** -> **Secrets and variables** -> **Actions**.
+3. Create a **New repository secret**:
+   - **Name**: `HF_TOKEN`
+   - **Value**: Your Hugging Face Access Token (Write access).
+4. Create a file in your repo at `.github/workflows/hf_sync.yml` using the template below. Every time you run `git push origin main`, GitHub will build and update your Hugging Face Space automatically!
 
 ### 🔒 Access Control (Private Deployment)
 To restrict access so **only you** can use the chatbot:
@@ -46,6 +62,7 @@ To restrict access so **only you** can use the chatbot:
 To push manually:
 1. Create a new Space on [Hugging Face](https://huggingface.co/new-space).
 2. Choose **Gradio** as the SDK.
+
 3. Push these files to your Space's repository:
    ```bash
    git remote add origin https://huggingface.co/spaces/YOUR_USERNAME/YOUR_SPACE_NAME
